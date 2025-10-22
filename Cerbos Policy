@@ -1,0 +1,86 @@
+# =================================================================================
+# Cerbos Policy for "Account" Resource
+# =================================================================================
+#
+# This file has been UPDATED for Multi-Tenancy.
+#
+# P: Principal (now has P.attr.activeTenantId)
+# R: Resource (now has R.attr.tenantId)
+#
+# Every rule is now wrapped in a tenant-matching condition.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "account"
+  version: "default"
+  importDerivedRoles: []
+  rules:
+    # An "agent" (internal user) can view any account *within their active tenant*.
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "agent"
+      name: "agent_access_tenant"
+      description: "Agents can view all accounts in their active tenant"
+      condition:
+        match:
+          # Check active tenant against resource tenant
+          expr: "P.attr.activeTenantId == R.attr.tenantId"
+
+    # A user can view an account if they are the owner *and* in the correct tenant.
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "user" # Role from Duende
+      name: "owner_access_tenant"
+      description: "Allow if the user is the owner and in the active tenant"
+      condition:
+        # Check both ownership AND tenancy
+        all:
+          of:
+            - match:
+                expr: "P.id == R.attr.ownerId"
+            - match:
+                expr: "P.attr.activeTenantId == R.attr.tenantId"
+
+    # An "introducer" can view an account based on their group,
+    # but only *within the active tenant*.
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "introducer" # Role from Duende
+      name: "introducer_access_tenant"
+      description: "Allow if account is in introducer's group list (tenant-aware)"
+      condition:
+        all:
+          of:
+            # First, check the principal and resource tenants match.
+            - match:
+                expr: "P.attr.activeTenantId == R.attr.tenantId"
+            # Then, run the tenant-aware lookup script.
+            - script:
+                expr: |
+                  has(P.attr.introducer_id) &&
+                  let group = resource.lookup("introducer_group", P.attr.introducer_id);
+                  
+                  # Check group's tenant matches active tenant
+                  group.attr.tenantId == P.attr.activeTenantId && 
+                  
+                  # Check account is in the group's list
+                  group.attr.accessibleAccountIds.contains(R.id)
+
+    # Tenant-aware modification rules
+    - actions: ["edit", "close"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "user"
+      name: "owner_modification_tenant"
+      description: "Only owners can edit or close their own accounts in their tenant"
+      condition:
+        all:
+          of:
+            - match:
+                expr: "P.id == R.attr.ownerId"
+            - match:
+                expr: "P.attr.activeTenantId == R.attr.tenantId"
+
