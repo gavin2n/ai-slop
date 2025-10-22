@@ -1,0 +1,44 @@
+# =================================================================================
+# Cerbos Resource Data File
+# =================================================================================
+#
+# This file is UPDATED for Multi-Tenancy.
+#
+# Each "introducer_group" now has a `tenantId` attribute
+# to scope it to a specific tenant.
+#
+# Note: Ingrid's ID is different per tenant.
+# "group_ingrid_A" for Tenant A
+# "group_ingrid_B" for Tenant B
+# This is a common pattern.
+
+apiVersion: api.cerbos.dev/v1
+
+resources:
+  - resource: "introducer_group"
+    version: "default"
+    id: "group_ingrid_A" # Ingrid's group for Tenant A
+    attributes:
+      name: "Ingrid's Client Group (Tenant A)"
+      tenantId: "tenant_A"
+      accessibleAccountIds:
+        - "ac_101" # An account in Tenant A
+  
+  - resource: "introducer_group"
+    version: "default"
+    id: "group_ingrid_B" # Ingrid's group for Tenant B
+    attributes:
+      name: "Ingrid's Client Group (Tenant B)"
+      tenantId: "tenant_B"
+      accessibleAccountIds:
+        - "ac_200" # An account in Tenant B
+  
+  - resource: "introducer_group"
+    version: "default"
+    id: "group_ian_A"
+    attributes:
+      name: "Ian's Client Group (Tenant A)"
+      tenantId: "tenant_A"
+      accessibleAccountIds:
+        - "ac_100"
+
